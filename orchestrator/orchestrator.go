@@ -5,8 +5,8 @@ type SagaOrchestrator interface {
 }
 
 type SagaOrchestratorBuilder interface {
-	WithKafkaConfig(brokerHosts []string)
-	WithMysqlConfig(host string, username string, password string)
+	WithKafkaConfig(brokerHosts []string) SagaOrchestratorBuilder
+	WithMysqlConfig(host string, username string, password string) SagaOrchestratorBuilder
 	SetSagaId(sagaId string) SagaOrchestratorBuilder
 	SetApplicationOwner(owner string) SagaOrchestratorBuilder
 	PublishTo(channel string) SagaOrchestratorBuilder //kafka channel name. should be already created

@@ -5,19 +5,18 @@ import (
 	"github.com/aman-bansal/go_saga_orchestrator/orchestrator"
 )
 
-
-type OrchestratedEvent struct {
+type SagaWorkflowEvent struct {
 	Transaction  orchestrator.Transaction
 	Compensation orchestrator.Compensation
 	Deadline     int //in seconds
 }
 
 type DefaultSagaOrchestrator struct {
-	name string
-	channel string
-	orchestratedEvents []OrchestratedEvent
-	kafkaPublisher   kafka_manager.KafkaEventProducer
-	meta Meta
+	name           string
+	channel        string
+	sagaWorkflow   []SagaWorkflowEvent
+	kafkaPublisher kafka_manager.KafkaEventProducer
+	meta           Meta
 }
 
 func (d DefaultSagaOrchestrator) Start(data []byte) error {
@@ -25,28 +24,29 @@ func (d DefaultSagaOrchestrator) Start(data []byte) error {
 }
 
 type Meta struct {
-	sagaId string
+	sagaId           string
 	ownerApplication string
 }
 
 type DefaultSagaOrchestratorBuilder struct {
-	sagaId string
-	owner string
-	name string
-	channel string
-	orchestratedEvents []OrchestratedEvent
-	brokerHosts []string
+	sagaId             string
+	owner              string
+	name               string
+	channel            string
+	orchestratedEvents []SagaWorkflowEvent
+	brokerHosts        []string
 }
 
-func NewDefaultSagaOrchestratorBuilder() *DefaultSagaOrchestratorBuilder{
+func NewDefaultSagaOrchestratorBuilder() *DefaultSagaOrchestratorBuilder {
 	return &DefaultSagaOrchestratorBuilder{}
 }
 
-func (d *DefaultSagaOrchestratorBuilder) WithKafkaConfig(brokerHosts []string) {
+func (d *DefaultSagaOrchestratorBuilder) WithKafkaConfig(brokerHosts []string) orchestrator.SagaOrchestratorBuilder {
 	d.brokerHosts = brokerHosts
+	return d
 }
 
-func (d *DefaultSagaOrchestratorBuilder) WithMysqlConfig(host string, username string, password string) {
+func (d *DefaultSagaOrchestratorBuilder) WithMysqlConfig(host string, username string, password string) orchestrator.SagaOrchestratorBuilder {
 	panic("implement me")
 }
 
@@ -72,10 +72,10 @@ func (d *DefaultSagaOrchestratorBuilder) Name(name string) orchestrator.SagaOrch
 
 func (d *DefaultSagaOrchestratorBuilder) Add(transaction orchestrator.Transaction, compensation orchestrator.Compensation, deadline int) orchestrator.SagaOrchestratorBuilder {
 	if d.orchestratedEvents == nil {
-		d.orchestratedEvents = make([]OrchestratedEvent, 0)
+		d.orchestratedEvents = make([]SagaWorkflowEvent, 0)
 	}
 
-	d.orchestratedEvents = append(d.orchestratedEvents, OrchestratedEvent{
+	d.orchestratedEvents = append(d.orchestratedEvents, SagaWorkflowEvent{
 		Transaction:  transaction,
 		Compensation: compensation,
 		Deadline:     deadline,
@@ -92,14 +92,22 @@ func (d *DefaultSagaOrchestratorBuilder) Build() (orchestrator.SagaOrchestrator,
 		return nil, err
 	}
 
+	//consume message
+	// if transaction complete and failed message
+	// if compensation complete and failed message
+	// trigger next saga transaction or compensation
+	go func() {
+		kafkaEventConsumer.MessageChannel()
+	}()
+
 	//consume this event
 	kafkaPublisher := kafka_manager.NewKafkaEventProducer(d.brokerHosts, d.channel)
 	return &DefaultSagaOrchestrator{
-		name:               d.name,
-		channel:            d.channel,
-		orchestratedEvents: d.orchestratedEvents,
-		kafkaPublisher:     kafkaPublisher,
-		meta:               Meta{
+		name:           d.name,
+		channel:        d.channel,
+		sagaWorkflow:   d.orchestratedEvents,
+		kafkaPublisher: kafkaPublisher,
+		meta: Meta{
 			sagaId:           d.sagaId,
 			ownerApplication: d.owner,
 		},

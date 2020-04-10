@@ -1,3 +1,3 @@
 package cleanup
 
-//cleanup job to clean unidentified sagas
+//cleanup job to clean timedout sagas
