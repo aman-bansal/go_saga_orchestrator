@@ -2,6 +2,7 @@ package saga
 
 import (
 	"github.com/aman-bansal/go_saga_orchestrator/internal/kafka_manager"
+	"github.com/aman-bansal/go_saga_orchestrator/internal/mysql_storage"
 	"github.com/aman-bansal/go_saga_orchestrator/participant"
 )
 
@@ -21,6 +22,11 @@ type DefaultSagaParticipant struct {
 	cmp            CompensationProcessor
 	brokerHosts    []string
 	kafkaPublisher kafka_manager.KafkaEventProducer
+	mysqlClient    mysql_storage.StorageClient
+}
+
+func NewDefaultSagaParticipant() participant.SagaParticipant {
+	return &DefaultSagaParticipant{}
 }
 
 func (d *DefaultSagaParticipant) WithKafkaConfig(brokerHosts []string) participant.SagaParticipant {
@@ -28,7 +34,7 @@ func (d *DefaultSagaParticipant) WithKafkaConfig(brokerHosts []string) participa
 	return d
 }
 
-func (d *DefaultSagaParticipant) WithMysqlConfig(host string, username string, password string) participant.SagaParticipant {
+func (d *DefaultSagaParticipant) WithMysqlConfig(host string, username string, password string, dbName string) participant.SagaParticipant {
 	panic("implement me")
 }
 

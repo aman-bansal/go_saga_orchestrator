@@ -2,7 +2,7 @@ package participant
 
 type SagaParticipant interface {
 	WithKafkaConfig(brokerHosts []string) SagaParticipant
-	WithMysqlConfig(host string, username string, password string) SagaParticipant
+	WithMysqlConfig(host string, username string, password string, dbName string) SagaParticipant
 	ListenTo(channel string) SagaParticipant
 	AddTransactionProcessor(transactionType string, processor Processor) SagaParticipant
 	AddCompensationProcessor(compensationType string, processor Processor) SagaParticipant

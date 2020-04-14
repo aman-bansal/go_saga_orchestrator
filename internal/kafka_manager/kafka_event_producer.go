@@ -1,13 +1,14 @@
 package kafka_manager
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/event"
 )
 
 type KafkaEventProducer interface {
-	Produce(event event.Event) error
+	Produce(event event.KafkaEvent) error
 	Close()
 }
 
@@ -35,10 +36,11 @@ func NewKafkaEventProducer(brokerHosts []string, topic string) KafkaEventProduce
 	}
 }
 
-func (k *DefaultKafkaEventProducer) Produce(event event.Event) error {
+func (k *DefaultKafkaEventProducer) Produce(event event.KafkaEvent) error {
+	bytes, _ := json.Marshal(event)
 	msg := &sarama.ProducerMessage{
 		Topic: k.topic,
-		Value: sarama.ByteEncoder(event.GetData()),
+		Value: sarama.ByteEncoder(bytes),
 	}
 
 	partition, offset, err := k.producer.SendMessage(msg)
