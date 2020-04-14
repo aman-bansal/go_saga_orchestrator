@@ -1,6 +1,9 @@
 package saga
 
 import (
+	"encoding/json"
+	"github.com/Shopify/sarama"
+	"github.com/aman-bansal/go_saga_orchestrator/internal/event"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/kafka_manager"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/mysql_storage"
 	"github.com/aman-bansal/go_saga_orchestrator/participant"
@@ -72,6 +75,27 @@ func (d *DefaultSagaParticipant) Start() error {
 	kafkaPublisher := kafka_manager.NewKafkaEventProducer(d.brokerHosts, d.channel)
 
 	return nil
+}
+
+//consume message
+// if transaction complete and failed message
+// if compensation complete and failed message
+// trigger next saga transaction or compensation
+func consumeParticipantMessage(channel <-chan *sarama.ConsumerMessage) {
+	for {
+		msg := <-channel
+		kafkaEvent := new(event.KafkaEvent)
+		err := json.Unmarshal(msg.Value, kafkaEvent)
+		if err != nil {
+			continue
+		}
+
+		if kafkaEvent.State == event.COMPENSATION_COMPLETE || kafkaEvent.State == event.COMPENSATION_FAIL {
+			//do your thing i.e. trigger next else mark complete
+		} else if kafkaEvent.State == event.TRANSACTION_COMPLETE || kafkaEvent.State == event.TRANSACTION_FAIL {
+			//do your thing i.e. trigger next else mark complete
+		}
+	}
 }
 
 

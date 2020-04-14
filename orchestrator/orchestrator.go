@@ -1,18 +1,24 @@
 package orchestrator
 
-type SagaOrchestrator interface {
-	Start(data []byte) error
+import "github.com/aman-bansal/go_saga_orchestrator/internal/saga"
+
+type SagaOrchestratorRegistry interface {
+	Start(sagaId string, data []byte)	error
+}
+
+type SagaOrchestratorRegistration interface {
+	WithKafkaConfig(brokerHosts []string) SagaOrchestratorRegistration
+	WithMysqlConfig(host string, username string, password string, dbName string) SagaOrchestratorRegistration
+	PublishTo(channel string) SagaOrchestratorRegistration //kafka channel name. should be already created
+	AddSagaOrchestrator(saga.SagaOrchestrator) SagaOrchestratorRegistration
+	Register() (SagaOrchestratorRegistry, error)
 }
 
 type SagaOrchestratorBuilder interface {
-	WithKafkaConfig(brokerHosts []string) SagaOrchestratorBuilder
-	WithMysqlConfig(host string, username string, password string, dbName string) SagaOrchestratorBuilder
 	SetSagaId(sagaId string) SagaOrchestratorBuilder
-	SetApplicationOwner(owner string) SagaOrchestratorBuilder
-	PublishTo(channel string) SagaOrchestratorBuilder //kafka channel name. should be already created
 	Name(name string) SagaOrchestratorBuilder
 	Add(transaction Transaction, compensation Compensation, deadline int) SagaOrchestratorBuilder
-	Build() (SagaOrchestrator, error)
+	Build() saga.SagaOrchestrator
 }
 
 type Transaction interface {

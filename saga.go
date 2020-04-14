@@ -10,6 +10,10 @@ func GetSagaOrchestratorBuilder() orchestrator.SagaOrchestratorBuilder {
 	return saga.NewDefaultSagaOrchestratorBuilder()
 }
 
+func GetSagaOrchestratorRegistration() orchestrator.SagaOrchestratorRegistration {
+	return saga.NewDefaultSagaOrchestratorRegistration()
+}
+
 func GetSagaParticipant() participant.SagaParticipant {
 	return saga.NewDefaultSagaParticipant()
 }
