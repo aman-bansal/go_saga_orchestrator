@@ -2,12 +2,14 @@ package saga
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/event"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/kafka_manager"
 	"github.com/aman-bansal/go_saga_orchestrator/internal/mysql_storage"
 	"github.com/aman-bansal/go_saga_orchestrator/orchestrator"
+	"math"
 )
 
 type DefaultSagaOrchestratorRegistry struct {
@@ -19,10 +21,9 @@ type DefaultSagaOrchestratorRegistry struct {
 func (d *DefaultSagaOrchestratorRegistry) Start(sagaId string, data []byte) error {
 	saga := d.sagas[sagaId]
 	fmt.Println("starting saga for : " + saga.name)
-	//todo check what exactly is channel
 	err := d.kafkaPublisher.Produce(event.KafkaEvent{
 		SagaId:    saga.sagaId,
-		EventType: saga.channel,
+		EventType: saga.sagaWorkflows[0].Transaction.TransactionKey(),
 		State:     event.TRANSACTION_START,
 		Data:      data,
 	})
@@ -109,10 +110,10 @@ type SagaWorkflowEvent struct {
 }
 
 type SagaOrchestrator struct {
-	sagaId       string
-	name         string
-	channel      string
-	sagaWorkflow []SagaWorkflowEvent
+	sagaId        string
+	name          string
+	channel       string
+	sagaWorkflows []SagaWorkflowEvent
 }
 
 func NewDefaultSagaOrchestratorBuilder() orchestrator.SagaOrchestratorBuilder {
@@ -153,10 +154,10 @@ func (d *DefaultSagaOrchestratorBuilder) Add(transaction orchestrator.Transactio
 
 func (d *DefaultSagaOrchestratorBuilder) Build() SagaOrchestrator {
 	return SagaOrchestrator{
-		sagaId:       d.sagaId,
-		name:         d.name,
-		channel:      d.channel,
-		sagaWorkflow: d.orchestratedEvents,
+		sagaId:        d.sagaId,
+		name:          d.name,
+		channel:       d.channel,
+		sagaWorkflows: d.orchestratedEvents,
 	}
 }
 
@@ -168,19 +169,99 @@ func consumeOrchestratorMessage(registry *DefaultSagaOrchestratorRegistry, chann
 	for {
 		msg := <-channel
 		kafkaEvent := new(event.KafkaEvent)
-		err := json.Unmarshal(msg.Value, kafkaEvent)
-		if err != nil {
+		e := json.Unmarshal(msg.Value, kafkaEvent)
+		if e != nil {
 			continue
 		}
 
 		//if only saga is present then send the next event
+		//do your thing i.e. trigger next else mark complete
+		var err error = nil
 		if saga, ok := registry.sagas[kafkaEvent.SagaId]; ok {
 			_ = saga.sagaId
-			if kafkaEvent.State == event.COMPENSATION_COMPLETE || kafkaEvent.State == event.COMPENSATION_FAIL {
-				//do your thing i.e. trigger next else mark complete
-			} else if kafkaEvent.State == event.TRANSACTION_COMPLETE || kafkaEvent.State == event.TRANSACTION_FAIL {
-				//do your thing i.e. trigger next else mark complete
+			switch kafkaEvent.State {
+			case event.COMPENSATION_COMPLETE:
+				err = triggerNextCmpIfNecessary(registry.kafkaPublisher, saga, kafkaEvent.EventType, kafkaEvent.Data)
+			case event.COMPENSATION_FAIL:
+				//todo what to do
+			case event.TRANSACTION_FAIL:
+				err = triggerCmpWhenTxnFails(registry.kafkaPublisher, saga, kafkaEvent.EventType, kafkaEvent.Data)
+			case event.TRANSACTION_COMPLETE:
+				err = triggerNextTxnIfNecessary(registry.kafkaPublisher, saga, kafkaEvent.EventType, kafkaEvent.Data)
 			}
 		}
+
+		//check how to manage publihser error
+		if err != nil {
+
+		}
 	}
+}
+
+func triggerNextTxnIfNecessary(kafkaPublisher kafka_manager.KafkaEventProducer, saga *SagaOrchestrator, key string, data []byte) error {
+	var index = 0
+	for idx, workflow := range saga.sagaWorkflows {
+		if workflow.Transaction.TransactionKey() == key {
+			index = idx
+		}
+	}
+
+	if index == 0 {
+		return errors.New("no transaction found")
+	}
+
+	if index == len(saga.sagaWorkflows)-1 {
+		return nil
+	}
+
+	return kafkaPublisher.Produce(event.KafkaEvent{
+		SagaId:    saga.sagaId,
+		EventType: saga.sagaWorkflows[index+1].Transaction.TransactionKey(),
+		State:     event.TRANSACTION_START,
+		Data:      data,
+	})
+}
+
+func triggerNextCmpIfNecessary(kafkaPublisher kafka_manager.KafkaEventProducer, saga *SagaOrchestrator, key string, data []byte) error {
+	var index = math.MaxInt64
+	for idx, workflow := range saga.sagaWorkflows {
+		if workflow.Compensation.CompensationKey() == key {
+			index = idx
+		}
+	}
+
+	if index == math.MaxInt64 {
+		return errors.New("no compensation found")
+	}
+
+	if index == 0 {
+		return nil
+	}
+
+	return kafkaPublisher.Produce(event.KafkaEvent{
+		SagaId:    saga.sagaId,
+		EventType: saga.sagaWorkflows[index-1].Compensation.CompensationKey(),
+		State:     event.COMPENSATION_START,
+		Data:      data,
+	})
+}
+
+func triggerCmpWhenTxnFails(kafkaPublisher kafka_manager.KafkaEventProducer, saga *SagaOrchestrator, key string, data []byte) error {
+	var workflow *SagaWorkflowEvent = nil
+	for _, wf := range saga.sagaWorkflows {
+		if wf.Transaction.TransactionKey() == key {
+			workflow = &wf
+		}
+	}
+
+	if workflow == nil {
+		return errors.New("workflow is not preset")
+	}
+
+	return kafkaPublisher.Produce(event.KafkaEvent{
+		SagaId:    saga.sagaId,
+		EventType: workflow.Compensation.CompensationKey(),
+		State:     event.COMPENSATION_START,
+		Data:      data,
+	})
 }
