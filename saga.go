@@ -14,6 +14,6 @@ func GetSagaOrchestratorRegistration() orchestrator.SagaOrchestratorRegistration
 	return saga.NewDefaultSagaOrchestratorRegistration()
 }
 
-func GetSagaParticipant() participant.SagaParticipant {
-	return saga.NewDefaultSagaParticipant()
+func GetSagaParticipantRegistry() participant.SagaParticipantRegistration {
+	return saga.NewDefaultSagaParticipantRegistry()
 }

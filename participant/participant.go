@@ -1,14 +1,13 @@
 package participant
 
-type SagaParticipant interface {
-	WithKafkaConfig(brokerHosts []string) SagaParticipant
-	WithMysqlConfig(host string, username string, password string, dbName string) SagaParticipant
-	ListenTo(channel string) SagaParticipant
-	AddTransactionProcessor(transactionType string, processor Processor) SagaParticipant
-	AddCompensationProcessor(compensationType string, processor Processor) SagaParticipant
-	Start() error
+type SagaParticipantRegistration interface {
+	WithKafkaConfig(brokerHosts []string) SagaParticipantRegistration
+	ListenTo(channel string) SagaParticipantRegistration
+	AddTransactionProcessor(transactionType string, processor Processor) SagaParticipantRegistration
+	AddCompensationProcessor(compensationType string, processor Processor) SagaParticipantRegistration
+	Register() error
 }
 
 type Processor interface {
-	Process(data []byte) error
+	Process(data []byte) ([]byte, error)
 }

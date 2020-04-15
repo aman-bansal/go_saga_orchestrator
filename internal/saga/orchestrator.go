@@ -23,7 +23,7 @@ func (d *DefaultSagaOrchestratorRegistry) Start(sagaId string, data []byte) erro
 	err := d.kafkaPublisher.Produce(event.KafkaEvent{
 		SagaId:    saga.sagaId,
 		EventType: saga.channel,
-		State:     event.COMPENSATION_START,
+		State:     event.TRANSACTION_START,
 		Data:      data,
 	})
 	if err != nil {
@@ -173,6 +173,7 @@ func consumeOrchestratorMessage(registry *DefaultSagaOrchestratorRegistry, chann
 			continue
 		}
 
+		//if only saga is present then send the next event
 		if saga, ok := registry.sagas[kafkaEvent.SagaId]; ok {
 			_ = saga.sagaId
 			if kafkaEvent.State == event.COMPENSATION_COMPLETE || kafkaEvent.State == event.COMPENSATION_FAIL {
