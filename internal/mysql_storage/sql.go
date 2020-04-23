@@ -1,8 +1,10 @@
 package mysql_storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/aman-bansal/go_saga_orchestrator/internal/saga"
 	"time"
 )
 
@@ -12,6 +14,7 @@ type MysqlConfig struct {
 	User   string
 	Pass   string
 }
+
 type StorageClient interface {
 }
 
@@ -28,11 +31,29 @@ func NewStorageClient(conf MysqlConfig) (StorageClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	db.SetConnMaxLifetime(DefaultConnMaxLifeTime)
 	db.SetMaxIdleConns(DefaultMaxIdleConn)
 	db.SetMaxOpenConns(DefaultMaxOpenConn)
-
 	return &MysqlClient{
 		db: db,
 	}, nil
+}
+
+const saveSaga = ""
+const getSagaById = "Select * from saga where id = %s;"
+
+func (m *MysqlClient) SaveSaga(ctx context.Context) error {
+	return nil
+}
+
+func (m *MysqlClient) GetSagaById(ctx context.Context, id string) (*saga.SagaOrchestrator, error) {
+	saga := new (saga.SagaOrchestrator)
+	//result, err := m.db.Query(getSagaById, id)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	//if result.
+	return saga, nil
 }

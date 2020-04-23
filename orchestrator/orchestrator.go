@@ -17,7 +17,8 @@ type SagaOrchestratorRegistration interface {
 type SagaOrchestratorBuilder interface {
 	SetSagaId(sagaId string) SagaOrchestratorBuilder
 	Name(name string) SagaOrchestratorBuilder
-	Add(transaction Transaction, compensation Compensation, deadline int) SagaOrchestratorBuilder
+	Add(transaction Transaction, compensation Compensation) SagaOrchestratorBuilder
+	WithDeadline(int64) SagaOrchestratorBuilder
 	Build() saga.SagaOrchestrator
 }
 

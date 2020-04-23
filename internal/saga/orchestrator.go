@@ -113,6 +113,7 @@ type SagaOrchestrator struct {
 	sagaId        string
 	name          string
 	channel       string
+	deadline      int64
 	sagaWorkflows []SagaWorkflowEvent
 }
 
@@ -124,9 +125,8 @@ type DefaultSagaOrchestratorBuilder struct {
 	sagaId             string
 	name               string
 	channel            string
+	deadline           int64
 	orchestratedEvents []SagaWorkflowEvent
-	brokerHosts        []string
-	mysqlConfig        mysql_storage.MysqlConfig
 }
 
 func (d *DefaultSagaOrchestratorBuilder) SetSagaId(sagaId string) orchestrator.SagaOrchestratorBuilder {
@@ -139,7 +139,12 @@ func (d *DefaultSagaOrchestratorBuilder) Name(name string) orchestrator.SagaOrch
 	return d
 }
 
-func (d *DefaultSagaOrchestratorBuilder) Add(transaction orchestrator.Transaction, compensation orchestrator.Compensation, deadline int) orchestrator.SagaOrchestratorBuilder {
+func (d *DefaultSagaOrchestratorBuilder) WithDeadline(deadline int64) orchestrator.SagaOrchestratorBuilder {
+	d.deadline = deadline
+	return d
+}
+
+func (d *DefaultSagaOrchestratorBuilder) Add(transaction orchestrator.Transaction, compensation orchestrator.Compensation) orchestrator.SagaOrchestratorBuilder {
 	if d.orchestratedEvents == nil {
 		d.orchestratedEvents = make([]SagaWorkflowEvent, 0)
 	}
@@ -147,7 +152,6 @@ func (d *DefaultSagaOrchestratorBuilder) Add(transaction orchestrator.Transactio
 	d.orchestratedEvents = append(d.orchestratedEvents, SagaWorkflowEvent{
 		Transaction:  transaction,
 		Compensation: compensation,
-		Deadline:     deadline,
 	})
 	return d
 }
@@ -158,6 +162,7 @@ func (d *DefaultSagaOrchestratorBuilder) Build() SagaOrchestrator {
 		name:          d.name,
 		channel:       d.channel,
 		sagaWorkflows: d.orchestratedEvents,
+		deadline:      d.deadline,
 	}
 }
 

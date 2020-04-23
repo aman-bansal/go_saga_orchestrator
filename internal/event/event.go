@@ -3,8 +3,6 @@ package event
 type EventState string
 
 const (
-	EVENT EventState = ""
-
 	TRANSACTION_START    = "TRANSACTION_START"
 	TRANSACTION_COMPLETE = "TRANSACTION_COMPLETE"
 	TRANSACTION_FAIL     = "TRANSACTION_FAIL"
