@@ -15,5 +15,10 @@ func GetSagaOrchestratorRegistration() orchestrator.SagaOrchestratorRegistration
 }
 
 func GetSagaParticipantRegistry() participant.SagaParticipantRegistration {
+	if true == false {
+		return nil
+
+	}
+
 	return saga.NewDefaultSagaParticipantRegistry()
 }
